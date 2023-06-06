@@ -8,7 +8,6 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.md'),
 
 setup(
     name='mcap_etl',
-    version='0.1.1',
     author='SensorSurf',
     author_email='support@sensorsurf.com',
     description='Transform mcap (or rosbag) files into databases or other files',
@@ -16,6 +15,8 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/SensorSurf/mcap_etl',
     packages=find_packages(),
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -26,7 +27,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
     ],
-    keywords='ros, ros1, rosbag, mcap, timescale, etl, timeseries, database, etl',
+    keywords='ros, ros2, rosbag, mcap, timescale, etl, timeseries, database, etl',
     install_requires=[
         'jmespath==1.0.1',
         'lz4==4.3.2',
