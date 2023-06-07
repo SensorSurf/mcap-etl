@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from rosbags.rosbag1 import Reader
@@ -44,6 +45,20 @@ class Topic:
 class RosbagParser:
 
     MS_IN_NS = 1e-6
+    PRIM_TYPES = (
+        int,
+        float,
+        bool,str,
+        type(None),
+        np.int8,
+        np.int16,
+        np.int32,
+        np.int64,
+        np.float16,
+        np.float32,
+        np.float64,
+        np.bool
+    )
 
     @staticmethod
     def is_rosbag(file):
@@ -67,7 +82,7 @@ class RosbagParser:
 
                 msg = ros1_to_cdr(data, conn.msgtype)
                 msg = deserialize_cdr(msg, conn.msgtype)
-                msg = self.__filter_nonscalars(msg.__dict__)
+                msg = self.__filter_multidimensional(msg.__dict__)
 
                 msg['ts'] = int(ts * self.MS_IN_NS)
                 del msg['__msgtype__']
@@ -95,14 +110,16 @@ class RosbagParser:
                 topics.append(topic)
         return topics
 
-    def __filter_nonscalars(self, data):
+    def __filter_multidimensional(self, data):
         if isinstance(data, dict):
             for k, v in data.items():
-                data[k] = self.__filter_nonscalars(v)
-        elif isinstance(data, (list, tuple)):
+                data[k] = self.__filter_multidimensional(v)
+        elif isinstance(data, (list, tuple)) or (isinstance(data, np.ndarray) and data.ndim == 1):
+            asdict = dict()
             for i, v in enumerate(data):
-                data[i] = self.__filter_nonscalars(v)
-        elif not isinstance(data, (int, float, bool, str, type(None))):
+                asdict[str(i)] = self.__filter_multidimensional(v)
+            data = asdict
+        elif not isinstance(data, self.PRIM_TYPES):
             return None
 
         return data
@@ -120,17 +137,30 @@ class RosbagParser:
             ros_type = field_node[1][1]
 
             is_prim = field_node[1][0] == Nodetype.BASE
-            has_children = field_node[1][0] == Nodetype.NAME
+            is_cls = field_node[1][0] == Nodetype.NAME
+            is_arr = field_node[1][0] == Nodetype.SEQUENCE
 
             if is_prim:
                 field = FlatField(name, ros_type)
                 flat_schema.append(field)
-            elif has_children:
+            elif is_cls:
                 parent_prefix = name + SEPARATOR
                 children = self.__flatten_schema(ros_type)
                 for child in children:
                     full_name = parent_prefix + child.name
                     field = FlatField(full_name, child.ros_type)
                     flat_schema.append(field)
+            elif is_arr:
+                length = field_node[1][0].value
+
+                param_field_node = field_node[1][1][0]
+                param_ros_type = param_field_node[1]
+
+                is_param_prim = param_field_node[0] == Nodetype.BASE
+                if is_param_prim:
+                    for i in range(length):
+                        full_name = name + SEPARATOR + str(i)
+                        field = FlatField(full_name, param_ros_type)
+                        flat_schema.append(field)
 
         return flat_schema
