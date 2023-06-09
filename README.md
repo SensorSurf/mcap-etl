@@ -23,7 +23,7 @@ pip install mcap-etl
 
 mcap_etl requires a running Timescale database. Once set up, you can execute jobs against any file. Note that the database connection parameters are optional, enhancing flexibility.
 ```shell
-mcap_etl timescale \
+mcap-etl timescale \
     --host localhost \
     --port 5432 \
     --user postgres \
